@@ -1,0 +1,338 @@
+            APPLE REDESIGNED WEB CLONE
+
+Source: https://www.youtube.com/watch?v=DCTuw2P6DCU&t=361s&ab_channel=ILWYennefer
+Repo: https://github.com/lukef7fywmrp/apple-redesign-yt
+
+
+Practica con NextJS(con Typescript),TailwindCSS,ReduxToolkit y Sanity CMS.Empezamos creando el proyecto con el starter de siempre:
+>next-create-app --example with-tailwindcss . (o el nombre del directorio)
+
+Sanity es un Content Management Platform(CMS).Web aqui(https://www.sanity.io/).Ayuda a los non-developers a manejar el contenido de una web(hace de base de datos pero de forma gráfica,parecido a Wordpress).Es bastante usado entre freelancers.Usa un pseudo-lenguaje llamado Grok para realizar GETs y mutations luego hay que usar su sintaxis.
+Asi pues creamos un usuario en su web y creamos un nuevo proyecto(con su cli).Primero hay que instalar su CLI con Node,obviamente:
+>npm install -g @sanity/cli 
+
+* puedo ver su ayuda con 'sanity help'
+
+Despues en nuestro proyecto ya creado con next iniciamos un proyecto sanity con:
+>sanity init
+
+Me logeo y doy un nombre al proyecto.En cuanto a los datasets vamos a usar el default(production).El output path lo dejamos como lo sugiera
+
+En cuanto a la template con la que empezar dado que vamos a crear un e-commerce elegimos esa template.Creará un predefined schema + sample data(no vamos a subir nada,pero podriamos subir productos ya)
+HINT: fijate que al usar Next no tengo que pelearme con react-router-dom gracias a su sistema de rutas embebido
+
+NOTA: ojo con el error que se soluciona copiando el tailwind.config(y el postcss.config tmb hacia falta ??)
+
+IMPORTANTE: el comando sanity init va a crear un folder en la raiz al que tengo que cambiarme para arrancar sanity.Luego cd al folder(con el nombre que le diera antes) y arranco el CMS con sanity start:
+>cd XXX && sanity start(desde la Sanity v3 será npx sanity dev,con start arranca el compilado)
+
+NOTA: arrancará en el puerto 3333 y de momento no tendrá productos,vendedores etc(pide autenticarse de nuevo)
+
+Redesplegar la app de hospitales de Angular y de Twitter(cambiar nombre)
+
+Fijate que para entrar al Sanity tengo que autenticarme,parece bastante seguro.
+
+NOTA: el autor recomienda instalar estas libs para autoordenar las clases:
+>yarn add -D prettier prettier-plugin-tailwindcss
+
+En cuanto a los iconos de nuevo vamos a usar la lib hero-icons:
+>yarn add @heroicons/react
+
+NOTA: para integrar custom fonts con tailwind tengo que hacerlo en el tailwind.config.js,en la propiedad theme.extend y fontFamily.Le doy cualquier valor a la key y ese valor luego lo uso anteponiendole font.Ejemplo:
+
+  theme: {
+    extend: {
+      fontFamily: {
+        poppins: ["Poppins", "sans-serif"], <- esto será font-poppins luego
+      },
+    },
+  },
+
+En el globals.css obviamente traigo la fuente(por CDN tamb valdria):
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-poppins text-[#232428]; <- la llamo cuando quiera con font-poppins
+  }
+}
+INTERESANTE: fijate que el efecto de subrayado en el hover se hace con la pseudoclase :before(y alguna cosilla mas como inset a 0,orogine-left o scale-x-100).E.g.:
+  .link {
+    @apply relative cursor-pointer text-lg font-medium before:absolute before:inset-x-0 before:-bottom-1.5 before:h-0.5 before:origin-left before:scale-x-0 before:transform before:rounded-bl before:bg-black before:transition-all before:duration-200 hover:before:scale-x-100;
+  }
+NOTA: this beautiful underline animation I have already used it in Disney Clone
+1h35m: fijate que para crear el paralax effect simplemente ponemos un contenedor con 200vh de alto,una primera landing page con a 100vh y un segundo contenedor con un margen negativo de 100vh.
+Ojo,que landing page(el hijo del primer contenedor) también tiene que ir en position: sticky;
+
+ <main className="relative h-[200vh] bg-[#e7ecee]"> <- CONTAINER UNO
+    <Landing /> HIJO UNO EN STICKY y 100vh
+ </main>
+ <section className="relative z-40 -mt-[100vh] min-h-screen bg-[#1b1b1b]"> <- CONTAINER DOS CON MARGIN NEGATIVO
+    <h1 className="text-center text-4xl font-medium tracking-wide text-white md:text-5xl">
+       New Promos
+    </h1>
+ </section>
+
+ NOTA: para poder usar calc en tailwind tengo que añadir mode: 'jit' en la version 2(no hace falta ya desde la 3) y despues:
+ "w-[calc(100%+2rem)]" <- todo junto
+
+ 1h42m: vamos a usar HeadlessUI,es una libreria que proporciona componentes ya echos en tailwind(modales,radio buttons,transitions,menus,etc).Hay que instalarla:
+ >npm install @headlessui/react@latest
+ >npm install @headlessui/vue@latest <- para Vue tmb hay soporte
+
+ NOTA: recuerda que SSR lo que va a intentar es montar todo desde el server,eliminando tiempos de carga.La experiencia es superfluida.
+
+IMPORTANTE: puedo ver el id de proyecto en el IDE de Sanity en la pestaña Datasets.Lo necesitaré en el sanity.js de configuración.Para el token en la pestaña API hay que crear un token(el nombre el que quiera,pero el permiso debe ser de editor, o lectura y escritura)
+
+A continuacion editamos los schemas de Product y Category(fijate que todos los modelos se combinan en el archivo schema en la fn createSchema)
+
+2h22m: para hacer queries a Sanity Studio vamos a usar GROQ(Graph-Relational Object Queries).ES bastante parecido a GraphQL,fetcheando solo lo necesario
+NOTA: para meter queries en el IDE hay que ir a modo vision
+
+IMPORTANTE: para poder usar este lenguaje en Next hay que instalar la libreria next-sanity(y otras dos más ligadas a ella,sin embargo no nesitamos la segunda en esta app,pero la instalaremos):
+>yarn add next-sanity @portabletext/react @sanity/image-url
+
+TIP: recuerda que la API de Next es terriblemente sencilla,simplemente es crear dentro del folder pages/api cualquier archivo y se creará un endpoint(por ejemplo creo el file pages/api/getCategories y lo que exponga por get lo tengo al apuntar a dominio/api/getCategories(quitando el pages)).Desde luego este framework es la ostia
+
+NOTA:fijate que debo tipar las funciones para SSR,SSG,etc y que me vale para tipar la Page y la response la misma interface
+
+    3h16m IMPLEMENTING REDUX TOOLKIT
+
+Lo primero será instalar la lib para la impl de RTK junto con la impl core de react llamada 'react-redux':
+>yarn add @reduxjs/toolkit react-redux
+
+Despues hay que crear un file llamado store.ts con la llamada al configureStore:
+
+* En el store.ts junto todo.Ojo con las utilities de abajo
+import { configureStore } from '@reduxjs/toolkit';
+import basketReducer from './basketSlice';
+
+export const store = configureStore({
+  reducer:{
+    basket: basketReducer
+  }
+})
+
+export type RootState= ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch
+* Fin del store.ts
+
+Ahora simplemente es crear slices.Ejemplo del basketSlice:
+
+import { createSlice } from "@reduxjs/toolkit";
+import type { PayloadAction } from "@reduxjs/toolkit";
+import { Product } from "../interfaces/product";
+import { RootState } from "./store";
+
+export interface BasketState {
+  items: Product[];
+  total: number;
+}
+
+const initialState: BasketState = {
+  items: [],
+  total: 0,
+};
+
+export const basketSlice = createSlice({
+  name: "basket",
+  initialState,
+  reducers: {
+    addToBasket: (state: BasketState, action: PayloadAction<Product>) => {
+      state.items = [...state.items, action.payload];
+    },
+    removeFromBasket: (state:BasketState,action:PayloadAction<{id:string}>) => {
+      const index = state.items.findIndex((item)=> item._id === action.payload.id);
+      if(index >= 0){
+        state.items.splice(index,1)
+      }else{
+        console.log(`Can't remove product (id: ${action.payload.id}) as its not in the basket`)
+      }
+    }
+  },
+});
+
+// hay que exportar todas las actions para poder usarlas
+export const {addToBasket,removeFromBasket} = basketSlice.actions;
+// selectors are quick accessors:By convention the name is selectXXX ??
+export const selectBasketItems = (state:RootState) => state.basket.items;
+// fijate que exportamos por default el reducer
+export default basketSlice.reducer;
+
+Fijate que desde luego esta mejora de redux reduce código y complejidad.Solo sería investigar un poco si cambia mucho el testing y la asincronia.
+
+    3h 49m IMPLEMENTING REACT HOT TOAST
+  
+Vamos a usar esta libreria para las notificaciones.Lo primero será instalarla:
+>yarn add react-hot-toast
+Despues hay que añadir un ToasterProvider como siempre:
+import { Toaster } from "react-hot-toast";
+
+<Provider store={store}>
+  <Toaster /> <- perfectamente puede ser self-closed
+  <App />
+</Provider>
+
+4h00 implementing checkout page: fijate que dejo una función para agrupar por una key o por varias con su tipado.
+4h23m para formatear los precios vamos a usar la libreria react-currency-formatter:
+>npm install react-currency formatter
+>npm install -D @types/react-currency-formatter
+
+    4h 50m IMPLEMENTING STRIPE
+
+Abrir sesion: https://stripe.com/docs/checkout/quickstart
+Integrar Stripe en Next: https://vercel.com/guides/getting-started-with-nextjs-typescript-stripe <- éste es mejor
+
+PASO UNO CREAR CUENTA/ IMPORTAR CLAVES
+
+Lo primero obviamente es tener un usuario con Stripe asi que me registro con ellos.Despues creo una cuenta(no hacer todo en el ámbito general) y pego como environment variables la clave publica(la cual va con ámbito de browser) y secreta(sin ambito de browser) de ese usuario.
+
+PASO DOS LIBRERIAS
+
+NOTA: la libreria stripe.js tiene que ser cargada desde los servidores de Stripe.Esto crea un desafio al trabajar con Server Side Rendering ya que no hay visión sobre el objeto window(browser) en la parte back de una app con NextJS.Es por esta instrucción que necesitamos esta libreria en Next
+
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
+Asi pues,instalaremos el core y esta otra lib(diria que la necesitara cualquier framework js con con SSR,no sólo NextJS):
+>npm install stripe @stripe/stripe-js
+
+PASO TRES CREAR SESION PARA UN PAGO
+
+Si bien en el primer enlace tengo como hacerlo segun framework y lenguaje,el segundo es más completo y mejor orientado,asi que usaremos ese.
+Lo primero que vamos a hacer es traer los helpers que han usado ellos usando la API FETCH para un Post y un Get.Incluso están en TS
+Despues creo tamb desde el GitHub el retorno de la instancia de stripe en Singleton y creamos la función:
+
+  const createCheckoutSession = async () => {
+    setLoading(true);
+
+    // lo primero es crear/abrir una session en Stripe
+    const checkoutSession: Stripe.Checkout.Session = await fetchPostJSON("/api/checkout_sessions", {
+      items: items,
+    });
+    // si da un 500 imprimimos el log y paramos
+    if ((checkoutSession as any).statusCode === 500) {
+      return console.error((checkoutSession as any).message);
+    }
+    // si no redirigimos a su API,concretamente a checkout.
+    // Lo primero es recuperar la instancia de stripe(en Singleton) mediante el helper
+    const stripe = await getStripe();
+    // despues tratamos de redirigir a su API con el id de session
+    const { error } = await stripe!.redirectToCheckout({
+      // Make the id field from the Checkout Session creation API response
+      // available to this file, so you can provide it as parameter here
+      // instead of the {{CHECKOUT_SESSION_ID}} placeholder.
+      sessionId: checkoutSession.id,
+    });
+    // si el redirect fallará error no sería undefined y se imprimirá este console.warn
+    console.warn(error.message);
+
+    setLoading(false)
+  };
+Fijate que esta funcion redirige,asinto,de ahi su nombre.
+
+NOTA: no hacia falta hacer downgrade de los heroicons a la v1,solo que hará vienen de @heroicons/react/20 | 14/solid | outline.Simplemente faltaba el 20 o 24 en el path
+
+Despues hay que crear el endpoint para esa función.Asi pues creamos el file para el endpoint que crea la session para un pago,que hemos llamado:
+import type { NextApiRequest, NextApiResponse } from "next";
+import Stripe from "stripe";
+import { Product } from "../../interfaces/product";
+import { urlFor } from "../../sanity";
+
+// instanciamos stripe con nuestra private key
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2022-11-15",
+});
+
+export default async function (req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === "POST") {
+    // fijate que los items nos llegan en req.body.items
+    const items: Product[] = req.body.items;
+
+    // Stripe espera los items de una forma concreta,hay que mapear los items
+    const transformedItems = items.map((item) => ({
+      price_data: {
+        currency: "usd",
+        product_data: {
+          name: item.title,
+          images: [urlFor(item.image[0]).url()],
+        },
+        // normalmente se multiplicara por 100 para que no sean centavos
+        // unit_amount: item.price * 100
+        unit_amount: item.price * 100,
+      },
+      quantity: 1,
+    }));
+
+    try {
+      // creamos los params a mandar
+      const params: Stripe.Checkout.SessionCreateParams = {
+        payment_method_types: ["card"],
+        // puedo restringir los paises de envio
+        /* shipping_address_collection:{
+          allowed_countries:["US","CA"]
+        }, */
+        line_items: transformedItems,
+        mode: "payment",
+        // esto podemos hacerlo al haberlo expuesto en el checkout,parece que el queryParam es opcional pero es mejor hacerlo asi
+        success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+        // fijate que es de donde venimos
+        cancel_url: `${req.headers.origin}/checkout`,
+        metadata: {
+          images: JSON.stringify(items.map((item) => item.image[0].asset.url)),
+        },
+      };
+      // creamos la checkout session usando el id del body(ojo que es una Promise) y con los params para cada pago
+      const checkoutSession: Stripe.Checkout.Session = await stripe.checkout.sessions.create(
+        params,
+      );
+      // hay que devolver esa sesion en el response.json()
+      res.status(200).json(checkoutSession);
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Internal server error";
+      return res.status(500).json({statusCode:500,message:errorMessage})
+    }
+  } else{
+    // esto lo recomienda Stripe,pero a saber
+    res.setHeader("Allow","POST")
+    res.status(405).end("Method Not Allowed")
+    }
+  }
+Siempre puedo venir aqui,no es complicado para nada,asinto.Ojo con los requerimientos de Stripe,que solo usa integers parece
+
+5h19: success page: si el usuario paga exitosamente está redirigiendo a /success?session_id=[id].Falta hacer esa pagina
+NOTA: fijate que display: inline-flex lo que me sirvió es para que el contenedor no esté en block,ya que se pone así por defecto.Interesante
+
+5h31m: vamos a instalar la libreria react-responsive.Esta libreria es muy parecida al hook useMedia que usa Amiga.Permite determinar condiciones en base a aspect-ratios,breakpoints,etc(realmente tiene muchas opciones):
+
+>yarn add react-responsive
+
+import { useMediaQuery } from "react-responsive";
+
+  const isTabletOrMobile = useMediaQuery({
+    query: "(max-width: 1024px)",
+  });
+
+IMPORTANTE: parece que hay que esperar a que se monte todo el DOM mediante un boleano que pasamos a true en el primer instante que pueda el useEffect.Entiendo que esto lo que hace es asegurarse que todo se ejecuta tras montarse el DOM ??:
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  NOTA: confirmado que tanto useEffect como useLayoutEffect se disparan tras el primer render y despues de cada update/re-render.Esto no era asi antes con los lifecycles como componentDidMount. Luego ese boleano se asegura que la UI esta completamente renderizada y el calculo del mediaQuery no va a ser prematuro o dar un falso positivo.Desde luego es importantisimo esto,un efecto siempre va despues del renderizado de la UI.
+  TIP:los efectos no bloquean la UI de seguir pintandose ya que son acciones asincronas
+
+  NOTA: esto también cambió para intentar pensar más como un usuario.Un efecto no se dispara cuando un componente ha sido montado,sino cuando ha sido pintado(vista de un usuario).Parecido al approach de react-testing-library
+  Dejo un articulo muy interesante en favoritos que debo consultar y memorizar/razonar
+
+6h 05m
+  
