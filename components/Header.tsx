@@ -4,11 +4,13 @@ import { SearchIcon, ShoppingBagIcon, UserIcon } from "@heroicons/react/outline/
 import { Shopping } from "@heroicons/react/outline";
 import { useSelector } from "react-redux";
 import { selectBasketItems } from "../redux/basketSlice";
+import { signIn, signOut, useSession } from "next-auth/react";
 // Dado que la parte más importante de esta aplicación son las imágenes hay que optimizarla bien usando la Image de Next.
 
 const Header = () => {
-  const session = false;
-  const items = useSelector(selectBasketItems)
+  // esto es como session.data, ya sacamos la prop data directamente
+  const { data: session } = useSession();
+  const items = useSelector(selectBasketItems);
 
   return (
     <header className="sticky top-0 z-30 flex w-full items-center justify-between bg-[#e7ecee] p-4">
@@ -19,7 +21,7 @@ const Header = () => {
             <Image
               src="/images/Apple_logo.png"
               alt="nav-image"
-              // con fill hay que poner en relative el padre
+              // con fill hay que poner en relative el padre y darle height y width tmb
               fill
               style={{ objectFit: "contain" }}
             />
@@ -46,19 +48,17 @@ const Header = () => {
         {session ? (
           <Image
             src={
-              // session.user?.image ||
+              session.user?.image ||
               "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"
             }
             alt=""
             className="cursor-pointer rounded-full"
             width={34}
             height={34}
-            // onClick={() => signOut()}
+            onClick={() => signOut()}
           />
         ) : (
-          <UserIcon className="headerIcon"
-          //  onClick={() => signIn()} 
-           />
+          <UserIcon className="headerIcon" onClick={() => signIn()} />
         )}
       </div>
     </header>

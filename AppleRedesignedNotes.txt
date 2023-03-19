@@ -334,5 +334,167 @@ IMPORTANTE: parece que hay que esperar a que se monte todo el DOM mediante un bo
   NOTA: esto también cambió para intentar pensar más como un usuario.Un efecto no se dispara cuando un componente ha sido montado,sino cuando ha sido pintado(vista de un usuario).Parecido al approach de react-testing-library
   Dejo un articulo muy interesante en favoritos que debo consultar y memorizar/razonar
 
-6h 05m
-  
+6h 05m : implement authentication with NextAuth.Realmentes es una buena idea usar su módulo de Auth.Ellos ya dedican un equipo de trabajo a esta parte,para qué reinventar la rueda?.Además que tiene un montón de providers que ya usan OAuth.Es un modulo aparte que hay que instalar:
+
+>yarn add next-auth
+>yarn add next-auth-sanity <- tmb necesitamos el adapter
+
+Usaremos SSR y nos conectaremos con el Sanity Adapter
+
+PASO UNO: crear el file pages/api/auth/[...nextauth].js. 
+
+import NextAuth from 'next-auth'
+import GoogleProvider from 'next-auth/providers/google'
+import { SanityAdapter } from 'next-auth-sanity';
+import { sanityClient } from '../../../sanity';
+
+export default NextAuth({
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
+  ],
+  session: {
+    strategy:"jwt"
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+  adapter: SanityAdapter(sanityClient)
+});
+
+PASO DOS: usar el HOC <SessionProvider></SessionProvider>  que viene de next-auth/react en el punto más alto(el _app.tsx).También hay que sacar la session de las pageProps
+
+import { SessionProvider } from "next-auth/react";
+
+function MyApp({ Component, pageProps: { session, ...pageProps } }: AppProps) {
+  return (
+    <SessionProvider session={session}>
+      <Provider store={store}>
+        <Toaster />
+        <Component {...pageProps} />
+      </Provider>
+    </SessionProvider>
+  );
+}
+
+export default MyApp;
+
+PASO TRES: hacer fetch de la session mediante SSR en el index:
+
+* En el index.ts
+import { getSession } from "next-auth/react";
+import type { Session } from "next-auth";
+
+interface Props {
+  categories: Category[];
+  products: Product[];
+  // ojo que es un import type { Session } from "next-auth"
+  session: Session | null
+}
+
+export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
+  //  si usa fetch todo esta funcion tiene que estar en el browser.Por eso tengo visión sobre fetch,porque es el browser este scope(y por lo mismo la env en los helpers es del tipo browser y necesita NEXT_PUBLIC_...)Interesante
+
+  const [categories, products,session] = await Promise.all([
+    await fetchCategories(),
+    await fetchProducts(),
+    // este hook necesita el contexto como arg y viene de next-auth/react
+    await getSession(ctx)
+  ]);
+
+  return {
+    // la funcion getSSR retorna un objeto llamado props,careful
+    props: {
+      categories,
+      products,
+      session
+    },
+  };
+};
+
+PASO CUATRO: obtener las keys de Google.Ir a console.cloud.google.com y crear un nuevo proyecto
+Ir a Credentials y antes de poder tener las keys(es decir acceder a OAuth) hay que configurar la pantalla de consentimiento.El botón estará por ahi(elegit tipo external ya que queremos que sea publica)El resto puedo dar en continuar.
+Una vez configurado esto deberia ver "Create Credentials" donde estaba este boton anteriormente
+De nuevo estamos interesados en las de tipo OAuth(no confundir con Claves de API,queremos que sean para la Auth solo).De momento no hace falta poner las URis,simplemente terminamos y nos darán las keys a llevar a las env.
+Ojo que en Next habrá que agregar "lh3.googleusercontent.com" a la whitelist de images para ver el avatar de Google.
+
+PASO CINCO: usar el hook useSession cuando quiera para acceder a la session y las funciones signIn o signOut de next-auth/react:
+
+import { signIn, signOut, useSession } from "next-auth/react";
+
+const Header = () => {
+  // esto es como session.data, ya sacamos la prop data directamente
+  const { data: session } = useSession();
+
+ {session ? (
+    <Image
+      src={
+        session.user?.image ||
+        "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"
+      }
+      alt=""
+      className="cursor-pointer rounded-full"
+      width={34}
+      height={34}
+      onClick={() => signOut()}
+    />
+  ) : (
+    <UserIcon className="headerIcon" onClick={() => signIn()} />
+  )}
+
+PASO SEIS(6h30m): implementar el adapter de Sanity.Queremos que cada vez que un user de Google se logee también se cree un user y session en Sanity Studio.
+NextAuth ya tiene un adapter para poder integrarse con Sanity:
+> yarn add next-auth-sanity
+
+NOTA: implementar un adapter puede ser un punto de vulnerabilidad ya que Sanity tmb almacenará información confidencial(esto es aplicable a cualquier adapter).Se recomienda usar adapters de NextAuth con responsabilidad.
+
+TIP: solo vamos a usar su adapter,no su autenticacion(como ya he usado la de Spotify por ejemplo), asi que no necesitamos añadir nada al arreglo de providers,solo al de adapters(que entiendo que con uno solo no hace falta que sea un array pero lo seria con varios??):
+IMPORTANTE: en el momento que use un adapter necesito especificar el tipo de session y darle un secret(aunque en local si funcionaría,en prod no) 
+
+import { SanityAdapter } from 'next-auth-sanity';
+import { sanityClient } from '../../../sanity';
+
+...  
+ session: {
+    strategy:"jwt"
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+  adapter: SanityAdapter(sanityClient)
+
+Fijate que el argumento sanityClient usa todas las keys del IDE que ya tengo en las env.
+Y no queremos la strategy database porque con el token que se intercambiarán ellos nos vale(diria que lo sacará despues Sanity del payload del token todo y asi sabe tmb si la session es válida)
+
+IMPORTANTE: aún falta configurar en Sanity el Schema para un user,una account y el token.Esto va en el file schema.js que crea los schemas en el Sanity Studio:
+
+en el schema.js(el que junte los schemas)
+// PARTE EXTRA necesaria para integrar Sanity como adapter de NextAuth
+import { user, account, verificationToken } from "next-auth-sanity/schemas";
+
+export default createSchema({
+  // We name our schema
+  name: "default",
+  // Then proceed to concatenate our document type
+  // to the ones provided by any plugins that are installed
+  types: schemaTypes.concat([
+    // The following are document types which will appear
+    // in the studio.
+    product,
+    category,
+    blockContent,
+    localeText,
+    localeBlockContent,
+    localeString,
+    user,
+    account
+  ]),
+});
+
+Al final no necesitamos el schema de verificationToken(parece que era para cuando se use Sanity como Provider pero solo está como adapter aqui)
+En cuanto añada los schemas deberia ver al user y la session del que se loguee en la app
+
+OJO, para que todo funcione hay que ir al proyecto de Sanity,a la pestaña API y añadir los dominios que necesite a Origin además de checkear a true el check Allow credentials(en resumen,habilitar los CORS entre ellos)
+
+6h42m: realizar el deploy final a prod.Fijate que hay que desplegar el Sanity Studio y la app web(por separado).
+1- Para desplegar el Sanity simplemente ejecutar "sanity deploy".Nos dará un dominio tipo (<my-name>.sanity.studio)
+Al final me dió esta: https://apple-redesigned-practice.sanity.studio/desk
+Fijate que hay que hacer login asi que está seguro todo,entiendo

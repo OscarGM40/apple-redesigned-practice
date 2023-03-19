@@ -9,10 +9,14 @@ import { fetchProducts } from "../utils/fetchProducts";
 import { Product } from "../interfaces/product";
 import ProductCard from "../components/Product";
 import Basket from "../components/Basket";
+import { getSession } from "next-auth/react";
+import type { Session } from "next-auth";
 
 interface Props {
   categories: Category[];
   products: Product[];
+  // ojo que es un import type { Session } from "next-auth"
+  session: Session | null
 }
 const Home: NextPage<Props> = ({ categories, products }) => {
   // console.log({ categories });
@@ -78,18 +82,22 @@ const Home: NextPage<Props> = ({ categories, products }) => {
 
 export default Home;
 
-export const getServerSideProps: GetServerSideProps<Props> = async () => {
+export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   //  si usa fetch todo esta funcion tiene que estar en el browser.Por eso tengo visión sobre fetch,porque es el browser este scope(y por lo mismo la env es del tipo browser y necesita NEXT_PUBLIC_...)
-  const [categories, products] = await Promise.all([
+  const [categories, products,session] = await Promise.all([
     await fetchCategories(),
     await fetchProducts(),
+    // este hook necesita el contexto como arg y viene de next-auth/react
+    await getSession(ctx)
   ]);
 
   return {
-    // typing === props: {}
+    // la funcion getSSR retorna un objeto llamado props,careful
     props: {
       categories,
       products,
+      session
     },
   };
 };
+

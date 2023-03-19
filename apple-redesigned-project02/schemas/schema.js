@@ -12,6 +12,10 @@ import localeString from "./locale/String";
 import localeText from "./locale/Text";
 import localeBlockContent from "./locale/BlockContent";
 
+// PARTE EXTRA necesaria para integrar Sanity como adapter de NextAuth
+import { user, account } from "next-auth-sanity/schemas";
+
+
 // Then we give our schema to the builder and provide the result to Sanity
 export default createSchema({
   // We name our schema
@@ -29,5 +33,7 @@ export default createSchema({
     localeText,
     localeBlockContent,
     localeString,
+    user,
+    account
   ]),
 });

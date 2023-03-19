@@ -15,13 +15,14 @@ import { useMediaQuery } from "react-responsive";
 import Button from "../components/Button";
 import { StripeProduct } from "../interfaces/product";
 import { fetchLineItems } from "../utils/fetch-line-items";
-// import { useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 
 interface Props {
   products: StripeProduct[];
 }
 
 const Success = ({ products }: Props) => {
+  const { data: session } = useSession();
   const router = useRouter();
   // para que esto funcione tiene que haber un ?session_id=XXXX
   const { session_id } = router.query;
@@ -84,8 +85,8 @@ const Success = ({ products }: Props) => {
               {/* slice(-5) solo coge los ultimos 5 chars de la session_id*/}
               <p className="text-sm text-gray-600">Order #{session_id?.slice(-5)}</p>
               <h4 className="text-lg">
-                Thank you
-                {/*      {session ? session.user?.name?.split(" ")[0] : "Guest"} */}
+                Thank you{" "}
+                     {session ? session.user?.name?.split(" ")[0] : "Guest"}
               </h4>
             </div>
           </div>
